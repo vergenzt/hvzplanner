@@ -20,11 +20,11 @@ import javax.swing.JLabel;
 
 import robotutils.data.Coordinate;
 import robotutils.data.GridMap;
-import robotutils.data.GridMapGenerator;
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
 import robotutils.gui.MapPanel;
 import robotutils.planning.GridDStar;
+import zombieplanner.dstar.ProbabilityMap;
 
 /**
  * Creates a randomized 2D map and solves a path between two random locations
@@ -43,7 +43,8 @@ public class ZombiePlanning {
     public static void main(String args[]) {
 
         // Generate a random blocky map (using cellular automata rules)
-        final GridMap map = GridMapGenerator.createRandomMazeMap2D(100, 100);
+        final GridMap map = GTMapGenerator.loadGTMap();
+        final ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities();
         final Rectangle2D mapBounds = new Rectangle2D.Double(0.0, 0.0, map.size(0), map.size(1));
 
         // Find an unoccupied start location
