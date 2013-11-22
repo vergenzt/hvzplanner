@@ -122,7 +122,8 @@ public class ZombiePlanning {
         jf.pack();
         jf.setVisible(true);
 
-        mp.setView(mapBounds);
+        int bound = Math.max(map.size(0), map.size(1));
+        mp.setView(0, bound, 0, bound);
 
         // Print and display start and goal locations
         System.out.println("Picked endpoints: " + Arrays.toString(start) + "->" + Arrays.toString(goal));
