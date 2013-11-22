@@ -23,7 +23,7 @@ import robotutils.data.GridMap;
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
 import robotutils.gui.MapPanel;
-import robotutils.planning.GridDStar;
+import zombieplanner.dstar.ProbabilisticGridDStar;
 import zombieplanner.dstar.ProbabilityMap;
 
 /**
@@ -64,7 +64,8 @@ public class ZombiePlanning {
         }
 
         // Initialize D* search
-        final GridDStar dstar = new GridDStar(map, new IntCoord(start), new IntCoord(goal));
+        final ProbabilisticGridDStar dstar = new ProbabilisticGridDStar(
+        		map, probDist, new IntCoord(start), new IntCoord(goal));
 
         // Create a display panel to draw the results
         final MapPanel mp = new MapPanel() {

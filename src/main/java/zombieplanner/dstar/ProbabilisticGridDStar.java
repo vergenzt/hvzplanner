@@ -25,7 +25,7 @@ public class ProbabilisticGridDStar extends GridDStar {
 	
 	@Override
 	protected double c(IntCoord a, IntCoord b) {
-		return 1.0 + alpha*probDist.get(b.getInts());
+		return super.c(a,b) + alpha*probDist.get(b.getInts());
 	}
 
 }
