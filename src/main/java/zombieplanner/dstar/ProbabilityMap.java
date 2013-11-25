@@ -16,7 +16,6 @@ import robotutils.data.StaticMap;
 public class ProbabilityMap {
 
 	// TODO make GridMap generic?
-	// TODO test ProbabilityMap
 
     double[] _map = null;
     int[] _sizes = new int[0];
