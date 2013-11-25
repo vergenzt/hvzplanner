@@ -8,13 +8,13 @@ import robotutils.data.StaticMap;
 /**
  * A grid map that stores a double at each location in the grid instead of a
  * byte, with the restriction that total probabilities add to 1.
- * 
+ *
  * @see GridMap
  * @see StaticMap
  * @author Tim Vergenz
  */
 public class ProbabilityMap {
-	
+
 	// TODO make GridMap generic?
 	// TODO test ProbabilityMap
 
@@ -22,32 +22,21 @@ public class ProbabilityMap {
     int[] _sizes = new int[0];
     int[] _cumSizes = new int[0];
     int _length = 0;
-    
-    boolean enforceNormalization = true;
-    boolean normalizationRequired = true;
-    
+
+    boolean isNormal;
+
     /**
      * Instantiate a ProbabilityMap
      */
     public ProbabilityMap() {
-    	this(true);
+    	isNormal = false;
     }
 
-    /**
-     * Instantiate a ProbabilityMap that enforces normalization. That is,
-     * every time {@link #get(int...)} is called, the data is normalized if it
-     * has been changed since the last get.
-     * @param enforceNormalization
-     */
-    public ProbabilityMap(boolean enforceNormalization) {    
-    	this.enforceNormalization = enforceNormalization;
-    }
-
-    public ProbabilityMap(boolean enforceNormalization, int... sizes) {
-    	this(enforceNormalization);
+    public ProbabilityMap(int... sizes) {
         resize(sizes);
+        isNormal = false;
     }
-    
+
     /**
      * Scale the probabilities so the total distribution sums to 1.
      */
@@ -59,16 +48,17 @@ public class ProbabilityMap {
 	    	for (int i=0; i<_map.length; i++)
 	    		_map[i] = _map[i]/sum;
     	}
-    	normalizationRequired = false;
+    	isNormal = true;
     }
-    
+
     /**
-     * Gets whether this map is normal (probabilities sum to 1). Runs in
-     * constant time.
+     * Gets whether this map is definitely normal (probabilities sum to 1).
+     * Runs in constant time. May return false when the data actually is
+     * normal, but should never return true when it is not.
      * @return true if probabilities sum to 1
      */
-    public boolean isNormal() {
-    	return !normalizationRequired;
+    public boolean isGuaranteedNormal() {
+    	return isNormal;
     }
 
     /**
@@ -85,7 +75,7 @@ public class ProbabilityMap {
 
         _length = _cumSizes[_sizes.length - 1] * _sizes[_sizes.length - 1];
         _map = new double[_length];
-        normalizationRequired = true;
+        isNormal = false;
     }
 
     /**
@@ -93,7 +83,7 @@ public class ProbabilityMap {
      */
     protected int index(int[] idx) {
         int linIdx = 0;
-        
+
         for (int i = 0; i < _sizes.length; i++) {
             if (idx[i] < 0) return -1;
             if (idx[i] >= _sizes[i]) return -1;
@@ -108,8 +98,6 @@ public class ProbabilityMap {
      * @see StaticMap#get(int...)
      */
     public double get(int... idx) {
-    	if (enforceNormalization && normalizationRequired)
-    		normalize();
         int i = index(idx);
         return (i >= 0) ? _map[i] : 0;
     }
@@ -119,8 +107,9 @@ public class ProbabilityMap {
      */
     public void set(double val, int... idx) {
         int i = index(idx);
+        if (_map[i] != val)
+        	isNormal = false;
         if (i >= 0) _map[i] = val;
-        normalizationRequired = true;
     }
 
     /**
@@ -157,5 +146,5 @@ public class ProbabilityMap {
     public double[] getData() {
         return _map;
     }
-	
+
 }

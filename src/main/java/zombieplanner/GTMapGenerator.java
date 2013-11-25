@@ -42,7 +42,7 @@ public final class GTMapGenerator {
 	 * @return a normalized equal-weighted probability map
 	 */
 	public static ProbabilityMap getUniformProbabilityMap(int width, int height) {
-		ProbabilityMap probMap = new ProbabilityMap(false, WIDTH, HEIGHT);
+		ProbabilityMap probMap = new ProbabilityMap(WIDTH, HEIGHT);
 		for (int i=0; i<probMap.getData().length; i++)
 			probMap.getData()[i] = 1.0;
 		probMap.normalize();
@@ -57,7 +57,7 @@ public final class GTMapGenerator {
 	 * @return a normalized centralized probability map
 	 */
 	public static ProbabilityMap getCentralizedProbabilityMap(int width, int height) {
-		ProbabilityMap probMap = new ProbabilityMap(false, WIDTH, HEIGHT);
+		ProbabilityMap probMap = new ProbabilityMap(WIDTH, HEIGHT);
 		int ci = (width/2), cj = (height/2);
 		for (int i=0; i<probMap.size(0); i++)
 			for (int j=0; j<probMap.size(1); j++)
