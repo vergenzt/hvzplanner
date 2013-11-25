@@ -22,15 +22,16 @@ import robotutils.data.Coordinate;
 import robotutils.data.GridMap;
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
+import robotutils.examples.GridDStarPlanning;
 import robotutils.gui.MapPanel;
 import zombieplanner.dstar.ProbabilisticGridDStar;
 import zombieplanner.dstar.ProbabilityMap;
 
 /**
- * Creates a randomized 2D map and solves a path between two random locations
- * using D* search.  Since D* is incremental, the GUI is configured to toggle
- * obstacles on left clicks and change the start location on a right click.
- * 
+ * Runs the planning simultion for a zombie apolcalypse. Based on
+ * {@link GridDStarPlanning} by Prasanna Velagapudi.
+ *
+ * @author Tim Vergenz <vergenzt@gmail.com>
  * @author Prasanna Velagapudi <pkv@cs.cmu.edu>
  */
 public class ZombiePlanning {
@@ -48,6 +49,12 @@ public class ZombiePlanning {
         final Rectangle2D mapBounds = new Rectangle2D.Double(0.0, 0.0, map.size(0), map.size(1));
 
         // Find an unoccupied start location
+        int[] start = {5, 5};
+        int[] goal = {map.size(0)-6, map.size(1)-6};
+        map.set((byte)0, start);
+        map.set((byte)0, goal);
+
+        /*
         int[] start = new int[map.dims()];
         while (map.get(start) < 0) {
             for (int i = 0; i < map.dims(); i++) {
@@ -62,10 +69,11 @@ public class ZombiePlanning {
                 goal[i] = rnd.nextInt(map.size(i));
             }
         }
+        */
 
         // Initialize D* search
         final ProbabilisticGridDStar dstar = new ProbabilisticGridDStar(
-        		map, probDist, new IntCoord(start), new IntCoord(goal));
+        		map, probDist, 2000.0, new IntCoord(start), new IntCoord(goal));
 
         // Create a display panel to draw the results
         final MapPanel mp = new MapPanel() {
@@ -99,7 +107,7 @@ public class ZombiePlanning {
                     }
 
                     setShape("Start", dot, AffineTransform.getTranslateInstance(
-                        (double)row + 0.5, (double)col + 0.5), Color.GREEN, dotStroke);
+                        row + 0.5, col + 0.5), Color.GREEN, dotStroke);
                 }
 
                 needToReplan.set(true);
@@ -129,9 +137,9 @@ public class ZombiePlanning {
         // Print and display start and goal locations
         System.out.println("Picked endpoints: " + Arrays.toString(start) + "->" + Arrays.toString(goal));
         mp.setShape("Start", dot, AffineTransform.getTranslateInstance(
-                (double)start[0] + 0.5, (double)start[1] + 0.5), Color.GREEN, dotStroke);
+                start[0] + 0.5, start[1] + 0.5), Color.GREEN, dotStroke);
         mp.setShape("Goal", dot, AffineTransform.getTranslateInstance(
-                (double)goal[0] + 0.5, (double)goal[1] + 0.5), Color.RED, dotStroke);
+                goal[0] + 0.5, goal[1] + 0.5), Color.RED, dotStroke);
 
         // Execute D* search FOREVER
         while(true) {

@@ -5,16 +5,17 @@ import robotutils.data.GridMapGenerator;
 import zombieplanner.dstar.ProbabilityMap;
 
 /**
- * A {@link GridMap} implementation of 
+ * A class to generate {@link GridMap}s and {@link ProbabilityMap}s for
+ * {@link ZombiePlanning}.
  * @author Tim Vergenz
  */
 public final class GTMapGenerator {
-	
+
 	public static final int WIDTH = 401, HEIGHT = 294;
-	
+
 	private static GridMap gtMap;
 	private static ProbabilityMap probMap;
-	
+
 	/**
 	 * Get a {@link GridMap} with data from the map of GT's campus.
 	 * @return a filled-in {@link GridMap}
@@ -29,7 +30,7 @@ public final class GTMapGenerator {
 
 	public static ProbabilityMap loadGTZombieProbabilities() {
 		if (probMap == null) {
-			probMap = getUniformProbabilityMap(WIDTH, HEIGHT);
+			probMap = getCentralizedProbabilityMap(WIDTH, HEIGHT);
 			// TODO load zombie probabilities
 		}
 		return probMap;
@@ -60,9 +61,11 @@ public final class GTMapGenerator {
 		ProbabilityMap probMap = new ProbabilityMap(WIDTH, HEIGHT);
 		int ci = (width/2), cj = (height/2);
 		for (int i=0; i<probMap.size(0); i++)
-			for (int j=0; j<probMap.size(1); j++)
+			for (int j=0; j<probMap.size(1); j++) {
 				probMap.set(Math.abs(i-ci) + Math.abs(j-cj), i, j);
+			}
 		probMap.normalize();
+		System.out.println(probMap.get(ci, cj));
 		return probMap;
 	}
 
