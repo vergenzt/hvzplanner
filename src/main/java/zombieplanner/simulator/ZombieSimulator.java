@@ -45,6 +45,14 @@ public class ZombieSimulator {
 		this.zombies = zombies;
 	}
 
+	public ZombieMap getMap() {
+		return map;
+	}
+
+	public ProbabilityMap getProbDist() {
+		return probDist;
+	}
+
 	public enum MoveAction implements Action {
 		NONE(0,0), LEFT(-1,0), RIGHT(1,0), UP(0,-1), DOWN(0,1);
 
