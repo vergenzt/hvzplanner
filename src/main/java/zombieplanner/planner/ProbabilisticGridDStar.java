@@ -1,8 +1,9 @@
-package zombieplanner.dstar;
+package zombieplanner.planner;
 
 import robotutils.data.GridMap;
 import robotutils.data.IntCoord;
 import robotutils.planning.GridDStar;
+import zombieplanner.simulator.ProbabilityMap;
 
 /**
  * An implementation of D*-lite that takes a probability distribution of some

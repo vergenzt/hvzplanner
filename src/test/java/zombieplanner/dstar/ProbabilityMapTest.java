@@ -6,6 +6,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import zombieplanner.simulator.ProbabilityMap;
+
 public class ProbabilityMapTest {
 
 	ProbabilityMap map;

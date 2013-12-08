@@ -1,4 +1,4 @@
-package zombieplanner.dstar;
+package zombieplanner.simulator;
 
 import java.util.Arrays;
 
@@ -14,8 +14,6 @@ import robotutils.data.StaticMap;
  * @author Tim Vergenz
  */
 public class ProbabilityMap {
-
-	// TODO make GridMap generic?
 
     double[] _map = null;
     int[] _sizes = new int[0];

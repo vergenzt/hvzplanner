@@ -2,8 +2,10 @@
 <classpath>
 	<classpathentry kind="src" path="src/test/java"/>
 	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="src" path="src/main/resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/aima-core-0.10.5.jar" sourcepath="lib/aima-core-0.10.5-sources.zip"/>
+	<classpathentry kind="lib" path="lib/guava-15.0.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/robotutils"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
