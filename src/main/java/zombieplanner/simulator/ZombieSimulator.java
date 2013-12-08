@@ -70,21 +70,6 @@ public class ZombieSimulator {
 		}
 	}
 
-//	public class StunAction implements Action {
-//
-//		private final Zombie target;
-//
-//		public StunAction(Zombie target) {
-//			this.target = target;
-//		}
-//
-//		@Override
-//		public void execute(ZombieSimulator sim) {
-//			// TODO zombie stun execution
-//		}
-//
-//	}
-
 	public static final int VIEW_RADIUS = 8;
 
 	/**
@@ -101,32 +86,6 @@ public class ZombieSimulator {
 			sum += Math.abs(humanCoords[i] - otherCoords[i]);
 		return sum <= VIEW_RADIUS;
 	}
-
-//	public IntCoord moveZombie(IntCoord zombie) {
-//		// if within range of a human, go towards the human
-//		if (isVisible(zombie)) {
-//			int dx = (int)Math.abs(human.get(0) - zombie.get(0));
-//			int dy = (int)Math.abs(human.get(1) - zombie.get(1));
-//
-//			if (dx <= dy) {
-//				if (zombie.get(0) < human.get(0))
-//					return new IntCoord((int)zombie.get(0) + 1, (int)zombie.get(1));
-//				else
-//					return new IntCoord((int)zombie.get(0) - 1, (int)zombie.get(1));
-//			}
-//			else {
-//				if (zombie.get(1) < human.get(1))
-//					return new IntCoord((int)zombie.get(0), (int)zombie.get(1) + 1);
-//				else
-//					return new IntCoord((int)zombie.get(0), (int)zombie.get(1) - 1);
-//			}
-//		}
-//		// otherwise walk randomly
-//		else {
-//			// TODO implement zombie walk
-//			return zombie;
-//		}
-//	}
 
 	/**
 	 * Get adjacent zombie-walkable neighbors of a position.
