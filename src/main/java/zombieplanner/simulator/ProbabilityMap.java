@@ -1,8 +1,12 @@
 package zombieplanner.simulator;
 
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.awt.Color;
 import java.util.Arrays;
 
 import robotutils.data.GridMap;
+import robotutils.data.GridMapUtils;
 import robotutils.data.StaticMap;
 
 /**
@@ -142,6 +146,47 @@ public class ProbabilityMap {
      */
     public double[] getData() {
         return _map;
+    }
+
+    /**
+     * Get a shaded heatmap of the density of this ProbabilityMap.
+     *
+     * Alpha should scale from 0 (where the probability is zero) to around
+     * 70% or so at the point of maximum probability.
+     *
+     * @see GridMapUtils#toImage(GridMap)
+     * @return a displayable heatmap of the probabilities
+     */
+    public Image getHeatMap() {
+    	BufferedImage img = new BufferedImage(size(0), size(1), BufferedImage.TYPE_INT_ARGB);
+
+    	int img_width = this.size(0);
+    	int img_height = this.size(1);
+    	double max_alpha_percent = 1.0;
+
+    	double max = 0;
+    	for (int xInd = 0; xInd < img_width; xInd++) {
+    		for (int yInd = 0; yInd < img_height; yInd++) {
+    			if (this.get(xInd, yInd) > max) {
+    				max = this.get(xInd, yInd);
+    			}
+    		}
+    	}
+    	System.out.println(max);
+
+    	double scale_factor = (255*max_alpha_percent)/max;
+    	int alpha = 0;
+    	int rgba = 0;
+
+    	for (int xInd = 0; xInd < img_width; xInd++) {
+    		for (int yInd = 0; yInd < img_height; yInd++) {
+    			alpha = (int) (scale_factor*(this.get(xInd, yInd)));
+    			rgba = new Color(255, 0, 0, alpha).getRGB();
+    			img.setRGB(xInd, yInd, rgba);
+    		}
+    	}
+
+    	return img;
     }
 
 }

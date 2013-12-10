@@ -13,20 +13,13 @@ public class StaticZombieMap extends StaticMap implements ZombieMap {
 	}
 
 	@Override
-	public void set(byte val, int... idx) {
-		if (0 <= val && val <= CellType.values().length)
-			super.set(val, idx);
-		else
-			throw new IllegalArgumentException("Not an allowable CellType: " + val);
-	}
-
 	public void set(CellType val, int... idx) {
-		set((byte)val.ordinal(), idx);
+		set(val.getByteVal(), idx);
 	}
 
 	@Override
 	public CellType typeOf(int... idx) {
-		return CellType.values()[get(idx)];
+		return CellType.fromByteVal(get(idx));
 	}
 
 }

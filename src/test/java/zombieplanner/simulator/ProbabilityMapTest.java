@@ -1,4 +1,5 @@
-package zombieplanner.dstar;
+package zombieplanner.simulator;
+
 
 import static org.junit.Assert.*;
 
@@ -11,6 +12,12 @@ import zombieplanner.simulator.ProbabilityMap;
 public class ProbabilityMapTest {
 
 	ProbabilityMap map;
+
+	/* This stuff isn't strictly necessary. You can leave out this
+	 * and the variable above, and just instantiate stuff in the
+	 * method annotated with @Test. When you run JUnit, any methods
+	 * with that annotation will run and it'll give you statistics.
+	 */
 
 	@Before public void setUp() { map = new ProbabilityMap(2, 2); }
 	@After public void tearDown() { map = null; }

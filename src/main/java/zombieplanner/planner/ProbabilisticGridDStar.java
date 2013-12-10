@@ -1,9 +1,12 @@
 package zombieplanner.planner;
 
+import robotutils.data.CoordUtils;
 import robotutils.data.GridMap;
 import robotutils.data.IntCoord;
 import robotutils.planning.GridDStar;
 import zombieplanner.simulator.ProbabilityMap;
+import zombieplanner.simulator.ZombieMap;
+import zombieplanner.simulator.ZombieMap.CellType;
 
 /**
  * An implementation of D*-lite that takes a probability distribution of some
@@ -31,9 +34,22 @@ public class ProbabilisticGridDStar extends GridDStar {
 		this.alpha = alpha;
 	}
 
+	/**
+	 * The constant addition factor that allows the algorithm to
+	 * take length of a path into consideration.
+	 */
+	public static final double CONSTANT = 1.0;
+
 	@Override
 	protected double c(IntCoord a, IntCoord b) {
-		return super.c(a,b) + alpha*probDist.get(b.getInts());
+        if (CoordUtils.mdist(a, b) != 1)
+            return Double.POSITIVE_INFINITY;
+		CellType ca = ((ZombieMap)_map).typeOf(a.getInts());
+		CellType cb = ((ZombieMap)_map).typeOf(b.getInts());
+		if (ca == CellType.OBSTACLE || cb == CellType.OBSTACLE)
+			return Double.POSITIVE_INFINITY;
+		else
+			return CONSTANT - alpha*Math.log(probDist.get(b.getInts()));
 	}
 
 }

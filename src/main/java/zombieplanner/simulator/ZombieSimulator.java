@@ -4,10 +4,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 
 import robotutils.data.IntCoord;
 import zombieplanner.planner.ZombiePlanner;
 import zombieplanner.simulator.ZombieMap.CellType;
+import zombieplanner.simulator.impl.GTMapGenerator;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
@@ -27,22 +29,28 @@ public class ZombieSimulator {
 	protected ZombieMap map;
 	protected ProbabilityMap probDist;
 	protected IntCoord human;
+	protected IntCoord goal;
 	protected Multiset<IntCoord> zombies;
-
 	protected ZombiePlanner planner;
 
 	public ZombieSimulator(ZombieMap map, ProbabilityMap probDist, ZombiePlanner planner) {
 		this.map = map;
 		this.probDist = probDist;
+		GTMapGenerator.filterAndNormProbabilityMap(probDist, map);
 		this.planner = planner;
 	}
 
-	protected void initializeHuman(IntCoord position) {
+	protected void setHumanPosition(IntCoord position) {
 		this.human = position;
 	}
 
-	protected void initializeZombies(Multiset<IntCoord> zombies) {
-		this.zombies = zombies;
+	protected void setGoalPosition(IntCoord position) {
+		this.goal = position;
+		planner.setGoal(goal);
+	}
+
+	public boolean hasHumanAndGoal() {
+		return (human != null) && (goal != null);
 	}
 
 	public ZombieMap getMap() {
@@ -78,7 +86,12 @@ public class ZombieSimulator {
 		}
 	}
 
-	public static final int VIEW_RADIUS = 8;
+	/**
+	 * The Manhattan distance view radius for the human. (i.e. zombies
+	 * whose Manhattan distance is <= VIEW_RADIUS are visible)
+	 */
+	public static final int VIEW_RADIUS = 12;
+	public static final int ZOMBIE_VIEW_RADIUS = 12;
 
 	/**
 	 * Get whether the given position is visible to the human
@@ -113,7 +126,38 @@ public class ZombieSimulator {
 			});
 	}
 
-	public void stepOnce() {
+	public static final int NUM_ZOMBIES = 30;
+
+	public void initializeZombies() {
+		zombies = HashMultiset.create();
+		Random rand = new Random();
+		for (int n=0; n<NUM_ZOMBIES; n++) {
+			//
+			double x = rand.nextDouble();
+			double sum = 0.0;
+			IntCoord zombie = null;
+			for (int i=0; i<map.size(0); i++) {
+				for (int j=0; j<map.size(1); j++) {
+					sum += probDist.get(i, j);
+					if (x <= sum) {
+						zombie = new IntCoord(i,j);
+					}
+					if (zombie != null)
+						break;
+				}
+				if (zombie != null)
+					break;
+			}
+			zombies.add(zombie);
+		}
+	}
+
+	/**
+	 * Step the simulation once, and return whether the game is over.
+	 * @return
+	 */
+	public boolean stepOnce() {
+		boolean gameOver = false;
 
 		// get the zombies within the player's view radius
 		Multiset<IntCoord> visibleZombies
@@ -124,6 +168,10 @@ public class ZombieSimulator {
 			});
 
 		Action action = planner.getAction(human, visibleZombies);
+		if (action == null) {
+			return true;
+		}
+
 		action.execute(this);
 
 		// run BFS from human to move zombies toward
@@ -136,7 +184,7 @@ public class ZombieSimulator {
 		while (!queue.isEmpty()) {
 			IntCoord pos = queue.poll();
 			Integer d = depths.get(pos);
-			if (d.intValue() < VIEW_RADIUS) {
+			if (d.intValue() < ZOMBIE_VIEW_RADIUS) {
 				for (IntCoord neighbor : getNeighbors(pos)) {
 					if (!prevs.containsKey(neighbor)) {
 						prevs.put(neighbor, pos);
@@ -153,10 +201,26 @@ public class ZombieSimulator {
 				movedZombies.add(prevs.get(zombie));
 			}
 			else {
-				// TODO zombie random walk
-				movedZombies.add(zombie);
+				IntCoord[] moves = new IntCoord[] {
+					new IntCoord((int)zombie.get(0), (int)zombie.get(1)),
+					new IntCoord((int)zombie.get(0)+1, (int)zombie.get(1)),
+					new IntCoord((int)zombie.get(0)-1, (int)zombie.get(1)),
+					new IntCoord((int)zombie.get(0), (int)zombie.get(1)+1),
+					new IntCoord((int)zombie.get(0), (int)zombie.get(1)-1),
+				};
+				IntCoord moved = moves[new Random().nextInt(5)];
+				if (map.typeOf(moved.getInts()) == CellType.CLEAR)
+					movedZombies.add(moved);
+				else
+					movedZombies.add(zombie);
 			}
 		}
+		zombies = movedZombies;
 
+		for (IntCoord zombie : zombies)
+			if (zombie.equals(human))
+				gameOver = true;
+
+		return gameOver;
 	}
 }

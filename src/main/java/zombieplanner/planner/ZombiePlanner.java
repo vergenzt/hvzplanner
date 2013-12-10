@@ -11,6 +11,8 @@ public interface ZombiePlanner {
 
 	public void initialize(ZombieMap map, ProbabilityMap probMap);
 
+	public void setGoal(IntCoord goal);
+
 	public Action getAction(IntCoord from, Multiset<IntCoord> visibleZombies);
 
 }

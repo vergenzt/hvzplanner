@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-
 /**
  * A class to generate {@link GridMap}s and {@link ProbabilityMap}s for
  * {@link ZombieSimulator}.
@@ -23,7 +22,7 @@ import java.io.InputStreamReader;
 public final class GTMapGenerator {
 
 	public static final int WIDTH = 401, HEIGHT = 294;
-	
+
 	public static final String OBSTACLE_MAP = "gt_obstacle_map.csv";
 	public static final String BUILDING_MAP = "gt_building_map.csv";
 	public static final String CLEAR_MAP = "gt_clear_map.csv";
@@ -31,7 +30,7 @@ public final class GTMapGenerator {
 
 	private static ZombieMap gtMap;
 	private static ProbabilityMap probMap;
-	
+
 	/**
 	 * Get a {@link GridMap} with data from the map of GT's campus.
 	 * @return a filled-in {@link GridMap}
@@ -39,7 +38,7 @@ public final class GTMapGenerator {
 	public static ZombieMap loadGTMap() {
 		if (gtMap == null) {
 			//gtMap = GridMapGenerator.createRandomMazeMap2D(WIDTH, HEIGHT);
-			
+
 			gtMap = new StaticZombieMap(WIDTH, HEIGHT);
 
 			updateGTMap(gtMap, CellType.OBSTACLE, OBSTACLE_MAP);
@@ -49,10 +48,10 @@ public final class GTMapGenerator {
 		return gtMap;
 	}
 
-	public static ProbabilityMap loadGTZombieProbabilities() {
+	public static ProbabilityMap loadGTZombieProbabilities(double baseline) {
 		if (probMap == null) {
 			//probMap = getCentralizedProbabilityMap(WIDTH, HEIGHT);
-			
+
 			probMap = new ProbabilityMap(WIDTH, HEIGHT);
 
 			InputStream is = null;
@@ -60,26 +59,24 @@ public final class GTMapGenerator {
 			BufferedReader br = null;
 			String line = "";
 			String delimiter = ",";
-		 
+
 			try {
 				is = ResourceLoader.getInputStream(ZOMBIE_DENSITY_MAP);
 				isr = new InputStreamReader(is);
 				br = new BufferedReader(isr);
-				
+
 				int xInd = 0;
 				int yInd = 0;
 				while ((line = br.readLine()) != null) {
 					String[] rowEntries = line.split(delimiter);
-					
+
 					xInd = 0;
 					for (String entry : rowEntries) {
-						probMap.set(Double.parseDouble(entry), xInd, yInd);
+						probMap.set(Double.parseDouble(entry) + baseline, xInd, yInd);
 						xInd++;
 					}
 					yInd++;
 				}
-//				System.out.println("xInd = " + xInd + "\n");
-//				System.out.println("yInd = " + yInd + "\n");
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
@@ -129,25 +126,49 @@ public final class GTMapGenerator {
 		System.out.println(probMap.get(ci, cj));
 		return probMap;
 	}
-	
-	private static void updateGTMap(ZombieMap gtMap, CellType layer, String filename) {		
+
+	/**
+	 * Reduce positions in ProbabilityMap which coincide with buildings/safezones to
+	 * value of '0'. Normalize updated ProbabilityMap
+	 * @param probMap
+	 * @param zombieMap
+	 */
+	public static void filterAndNormProbabilityMap(ProbabilityMap probMap, ZombieMap zombieMap) {
+		for (int xInd = 0; xInd < WIDTH; xInd++) {
+			for (int yInd = 0; yInd < HEIGHT; yInd++) {
+				if (zombieMap.typeOf(xInd, yInd) != CellType.CLEAR) {
+					probMap.set(0, xInd, yInd);
+				}
+			}
+		}
+
+		probMap.normalize();
+	}
+
+	/**
+	 * Update ZombieMap positions, indicated by file, to be of specified CellType
+	 * @param gtMap
+	 * @param layer
+	 * @param filename
+	 */
+	private static void updateGTMap(ZombieMap gtMap, CellType layer, String filename) {
 		InputStream is = null;
 		InputStreamReader isr = null;
 		BufferedReader br = null;
 		String line = "";
 		String delimiter = ",";
-	 
+
 		try {
-	 
+
 			is = ResourceLoader.getInputStream(filename);
 			isr = new InputStreamReader(is);
 			br = new BufferedReader(isr);
-			
+
 			int xInd = 0;
 			int yInd = 0;
 			while ((line = br.readLine()) != null) {
 				String[] rowEntries = line.split(delimiter);
-				
+
 				xInd = 0;
 				for (String entry : rowEntries) {
 					if (Integer.parseInt(entry) == 1) {
@@ -157,8 +178,6 @@ public final class GTMapGenerator {
 				}
 				yInd++;
 			}
-//			System.out.println("xInd = " + xInd + "\n");
-//			System.out.println("yInd = " + yInd + "\n");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -173,5 +192,4 @@ public final class GTMapGenerator {
 			}
 		}
 	}
-
 }
