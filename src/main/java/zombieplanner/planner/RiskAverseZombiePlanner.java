@@ -5,6 +5,7 @@ import java.util.Set;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
+import robotutils.planning.GridDStar;
 import zombieplanner.simulator.Action;
 import zombieplanner.simulator.ProbabilityMap;
 import zombieplanner.simulator.Zombie;
@@ -14,15 +15,15 @@ import zombieplanner.simulator.ZombieSimulator.MoveAction;
 import zombieplanner.simulator.ZombieSimulator.StunAction;
 
 
-public class ZombiePlannerImpl implements ZombiePlanner {
+public class RiskAverseZombiePlanner implements ZombiePlanner {
 
-	private ZombieMap map;
-	private ProbabilityMap probDist;
-	private IntCoord goal;
+	protected ZombieMap map;
+	protected ProbabilityMap probDist;
+	protected IntCoord goal;
 
-	private ProbabilityMap dynProbDist;
+	protected ProbabilityMap dynProbDist;
 
-	private ProbabilisticGridDStar planner;
+	protected GridDStar planner;
 
 	@Override
 	public void initialize(ZombieMap map, ProbabilityMap probMap) {
@@ -35,10 +36,14 @@ public class ZombiePlannerImpl implements ZombiePlanner {
 		return plan;
 	}
 
+	protected GridDStar getPlanner(IntCoord start) {
+		return new ProbabilisticGridDStar(map, probDist, 10000, start, goal);
+	}
+
 	@Override
 	public Action getAction(IntCoord from, Set<Zombie> visibleZombies) {
 		if (planner == null) {
-			planner = new ProbabilisticGridDStar(map, probDist, 10000, from, goal);
+			planner = getPlanner(from);
 		}
 
 		// if there are zombies in sight

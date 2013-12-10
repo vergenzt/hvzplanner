@@ -26,8 +26,9 @@ import javax.swing.Timer;
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
 import robotutils.gui.MapPanel;
+import zombieplanner.planner.RiskAverseZombiePlanner;
+import zombieplanner.planner.SimpleZombiePlanner;
 import zombieplanner.planner.ZombiePlanner;
-import zombieplanner.planner.ZombiePlannerImpl;
 import zombieplanner.simulator.ZombieMap.CellType;
 import zombieplanner.simulator.ZombieSimulator.GameState;
 import zombieplanner.simulator.impl.GTMapGenerator;
@@ -67,7 +68,7 @@ public class ZombieSimulatorUI implements ActionListener {
         mp.setIcon("probDist", probDistImage, mapBounds);
         mp.setPreferredSize(new Dimension(2*map.size(0), 2*map.size(1)));
 
-        JFrame jf = new JFrame("Map");
+        JFrame jf = new JFrame("Humans vs Zombies Path Planner");
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.getContentPane().setLayout(new BorderLayout());
         jf.getContentPane().add(mp, BorderLayout.CENTER);
@@ -117,6 +118,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		if (sim.getMap().typeOf(x, y) == CellType.OBSTACLE)
     			return;
     		sim.setHumanPosition(new IntCoord(x, y));
+    		System.out.println("Human: " + sim.human);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
 			mp.setShape("human", human, xform, Color.BLUE.darker());
     		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
@@ -126,6 +128,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		if (sim.getMap().typeOf(x, y) == CellType.OBSTACLE)
     			return;
     		sim.setGoalPosition(new IntCoord(x, y));
+    		System.out.println("Goal: " + sim.goal);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
 			mp.setShape("goal", human, xform, Color.GREEN.darker());
     		mp.setShape("goalView", goalView, xform, new Color(0,150,0,80));
@@ -155,10 +158,8 @@ public class ZombieSimulatorUI implements ActionListener {
 		}
 			initialize.setEnabled(false);
 
-			sim.planner.initialize(sim.map, sim.probDist);
 			step.setEnabled(true);
 			run.setEnabled(true);
-			sim.setState(GameState.ACTIVE);
 //			run.setEnabled(true);
 //			stop.setEnabled(true);
 		}
@@ -210,7 +211,7 @@ public class ZombieSimulatorUI implements ActionListener {
 			}
 		}
 
-		List<IntCoord> plan = ((ZombiePlannerImpl)sim.planner).getPlan();
+		List<IntCoord> plan = ((RiskAverseZombiePlanner)sim.planner).getPlan();
 
 		if (plan != null) {
 			plan = plan.subList(1, plan.size());
@@ -241,7 +242,8 @@ public class ZombieSimulatorUI implements ActionListener {
 
 		ZombieMap map = GTMapGenerator.loadGTMap();
 		ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities(0.1);
-		ZombiePlanner planner = new ZombiePlannerImpl();
+		ZombiePlanner planner = new RiskAverseZombiePlanner();
+//		ZombiePlanner planner = new SimpleZombiePlanner();
 		ZombieSimulator sim = new ZombieSimulator(map, probDist, planner);
 
 		ZombieSimulatorUI ui = new ZombieSimulatorUI(sim);

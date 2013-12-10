@@ -3,23 +3,23 @@ package zombieplanner.simulator;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
+import zombieplanner.planner.RiskAverseZombiePlanner;
+import zombieplanner.planner.SimpleZombiePlanner;
 import zombieplanner.planner.ZombiePlanner;
 import zombieplanner.simulator.ZombieMap.CellType;
 import zombieplanner.simulator.impl.GTMapGenerator;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Multisets;
 import com.google.common.collect.Sets;
 
 /**
@@ -35,6 +35,8 @@ public class ZombieSimulator {
 	protected IntCoord goal;
 	protected Set<Zombie> zombies;
 	protected ZombiePlanner planner;
+
+	protected int totalSteps = 0;
 
 	public ZombieSimulator(ZombieMap map, ProbabilityMap probDist, ZombiePlanner planner) {
 		this.map = map;
@@ -108,9 +110,7 @@ public class ZombieSimulator {
 
 			if (dist > MAX_STUN_DISTANCE) return;
 
-			double p = 0.4; // base probability of succeeding
-			for (int i=0; i<(int)dist; i++)
-				p += 0.1;
+			double p = 0.65 - (0.1)*(dist);
 
 			if (rand.nextDouble() < p)
 				target.setAlive(false);
@@ -157,7 +157,7 @@ public class ZombieSimulator {
 			});
 	}
 
-	public static final int NUM_ZOMBIES = 80;
+	public static final int NUM_ZOMBIES = 50;
 
 	public void initializeZombies() {
 		zombies = Sets.newHashSet();
@@ -180,6 +180,9 @@ public class ZombieSimulator {
 			}
 			zombies.add(new Zombie(pos));
 		}
+
+		planner.initialize(map, probDist);
+		setState(GameState.ACTIVE);
 	}
 
 	public enum GameState {
@@ -218,6 +221,8 @@ public class ZombieSimulator {
 		}
 
 		action.execute(this);
+
+		this.totalSteps++;
 
 		// run BFS from human to move zombies toward
 		Queue<IntCoord> queue = Lists.newLinkedList();
@@ -264,11 +269,61 @@ public class ZombieSimulator {
 		}
 	}
 
+	public static final int NUM_TRIALS = 100;
+
 	/**
 	 * Run a simulation without the user interface.
 	 * @param args
 	 */
-//	public static void main(String[] args) {
+	public static void main(String[] args) {
 		// TODO implement non-UI main method
-//	}
+
+		//
+		ZombieMap map = GTMapGenerator.loadGTMap();
+		ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities(0.1);
+
+		Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
+		planners.put("Risk Averse Planner", new RiskAverseZombiePlanner());
+		planners.put("Simple Planner", new SimpleZombiePlanner());
+
+		Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
+		Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
+
+		IntCoord start = new IntCoord(377, 276);
+		IntCoord goal = new IntCoord(273, 204);
+
+
+		long startTime = System.nanoTime();
+		for (int i=0; i<NUM_TRIALS; i++) {
+			for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
+				ZombiePlanner planner = e.getValue();
+
+				ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
+				sim.setHumanPosition(start);
+				sim.setGoalPosition(goal);
+				sim.initializeZombies();
+
+				while (sim.getState() == GameState.ACTIVE) {
+					sim.stepOnce();
+				}
+
+				if (!successes.containsKey(planner))
+					successes.put(planner, 0);
+				if (!totalSteps.containsKey(planner))
+					totalSteps.put(planner, 0);
+				successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
+				totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
+			}
+		}
+		long endTime = System.nanoTime();
+		System.out.println("Total time: " + (endTime - startTime)/1000000000 + "s");
+		System.out.println();
+
+		for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
+			System.out.println("Planner: " + e.getKey());
+			System.out.println("Average steps:" + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
+			System.out.println("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS)); System.out.println();
+		}
+
+	}
 }
