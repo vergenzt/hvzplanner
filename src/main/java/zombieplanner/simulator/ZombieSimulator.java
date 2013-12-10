@@ -1,12 +1,22 @@
 package zombieplanner.simulator;
 
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
@@ -28,6 +38,8 @@ import com.google.common.collect.Sets;
  * @author Tim Vergenz <vergenzt@gmail.com>
  */
 public class ZombieSimulator {
+
+	private final static Logger log = Logger.getLogger(ZombieSimulator.class.getName());
 
 	protected ZombieMap map;
 	protected ProbabilityMap probDist;
@@ -157,7 +169,7 @@ public class ZombieSimulator {
 			});
 	}
 
-	public static final int NUM_ZOMBIES = 50;
+	public static int NUM_ZOMBIES = 50;
 
 	public void initializeZombies() {
 		zombies = Sets.newHashSet();
@@ -269,61 +281,89 @@ public class ZombieSimulator {
 		}
 	}
 
-	public static final int NUM_TRIALS = 100;
+	public static final int NUM_TRIALS = 200;
 
 	/**
 	 * Run a simulation without the user interface.
 	 * @param args
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws SecurityException, IOException {
 		// TODO implement non-UI main method
 
-		//
+		String fname = new SimpleDateFormat("'log/'yyyy-MM-dd HH:mm:ss.SSS'.txt'").format(new Date());
+		FileHandler fh = new FileHandler(fname);
+		fh.setFormatter(new Formatter() {
+			@Override
+			public String format(LogRecord record) {
+				return record.getMessage() + "\n";
+			}
+		});
+		log.addHandler(fh);
+		log.setUseParentHandlers(false);
+		ConsoleHandler h = new ConsoleHandler();
+		h.setFormatter(new Formatter() {
+			@Override
+			public String format(LogRecord record) {
+				return record.getMessage() + "\n";
+			}
+		});
+		log.addHandler(h);
+
 		ZombieMap map = GTMapGenerator.loadGTMap();
 		ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities(0.1);
 
-		Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
-		planners.put("Risk Averse Planner", new RiskAverseZombiePlanner());
-		planners.put("Simple Planner", new SimpleZombiePlanner());
+		for (NUM_ZOMBIES = 40; NUM_ZOMBIES <= 70; NUM_ZOMBIES+=10) {
+			log.info("=== NUM_ZOMBIES: " + NUM_ZOMBIES + " ===");
+			log.info("");
 
-		Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
-		Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
+			Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
+			planners.put("Risk Averse Planner", new RiskAverseZombiePlanner());
+			planners.put("Simple Planner", new SimpleZombiePlanner());
 
-		IntCoord start = new IntCoord(377, 276);
-		IntCoord goal = new IntCoord(273, 204);
+			Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
+			Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
 
+			// freshmen dorms
+			IntCoord start = new IntCoord(377, 275);
+			// clough building
+			IntCoord goal = new IntCoord(274, 204);
+			log.info("From: " + start);
+			log.info("To: " + goal);
+			log.info("");
 
-		long startTime = System.nanoTime();
-		for (int i=0; i<NUM_TRIALS; i++) {
-			for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
-				ZombiePlanner planner = e.getValue();
+			long startTime = System.nanoTime();
+			for (int i=0; i<NUM_TRIALS; i++) {
+				for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
+					ZombiePlanner planner = e.getValue();
 
-				ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
-				sim.setHumanPosition(start);
-				sim.setGoalPosition(goal);
-				sim.initializeZombies();
+					ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
+					sim.setHumanPosition(start);
+					sim.setGoalPosition(goal);
+					sim.initializeZombies();
 
-				while (sim.getState() == GameState.ACTIVE) {
-					sim.stepOnce();
+					while (sim.getState() == GameState.ACTIVE) {
+						sim.stepOnce();
+					}
+
+					if (!successes.containsKey(planner))
+						successes.put(planner, 0);
+					if (!totalSteps.containsKey(planner))
+						totalSteps.put(planner, 0);
+					successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
+					totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
 				}
-
-				if (!successes.containsKey(planner))
-					successes.put(planner, 0);
-				if (!totalSteps.containsKey(planner))
-					totalSteps.put(planner, 0);
-				successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
-				totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
 			}
-		}
-		long endTime = System.nanoTime();
-		System.out.println("Total time: " + (endTime - startTime)/1000000000 + "s");
-		System.out.println();
+			long endTime = System.nanoTime();
+			log.info("Total time: " + (endTime - startTime)/1000000000 + "s");
+			log.info("");
 
-		for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
-			System.out.println("Planner: " + e.getKey());
-			System.out.println("Average steps:" + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
-			System.out.println("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS)); System.out.println();
+			for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
+				log.info("Planner: " + e.getKey());
+				log.info("Average steps:" + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
+				log.info("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS)); System.out.println();
+			}
+			log.info("");
+			log.info("");
 		}
-
 	}
 }
