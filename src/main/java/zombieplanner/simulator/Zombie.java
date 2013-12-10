@@ -60,6 +60,7 @@ public class Zombie {
 				this.setPosition(prevs.get(zpos));
 		}
 		else {
+			// TODO bias zombie walk
 			IntCoord[] moves = new IntCoord[] {
 				new IntCoord((int)zpos.get(0), (int)zpos.get(1)),
 				new IntCoord((int)zpos.get(0)+1, (int)zpos.get(1)),

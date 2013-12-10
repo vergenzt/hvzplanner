@@ -49,6 +49,7 @@ public class ZombieSimulator {
 	protected ZombiePlanner planner;
 
 	protected int totalSteps = 0;
+	protected int zombiesStunned = 0;
 
 	public ZombieSimulator(ZombieMap map, ProbabilityMap probDist, ZombiePlanner planner) {
 		this.map = map;
@@ -124,8 +125,10 @@ public class ZombieSimulator {
 
 			double p = 0.65 - (0.1)*(dist);
 
-			if (rand.nextDouble() < p)
+			if (rand.nextDouble() < p) {
 				target.setAlive(false);
+				sim.zombiesStunned++;
+			}
 		}
 	}
 
@@ -281,14 +284,13 @@ public class ZombieSimulator {
 		}
 	}
 
-	public static final int NUM_TRIALS = 200;
+	public static final int NUM_TRIALS = 1000;
 
 	/**
 	 * Run a simulation without the user interface.
 	 * @param args
 	 */
 	public static void main(String[] args) throws SecurityException, IOException {
-		// TODO implement non-UI main method
 
 		String fname = new SimpleDateFormat("'log/'yyyy-MM-dd HH:mm:ss.SSS'.txt'").format(new Date());
 		FileHandler fh = new FileHandler(fname);
@@ -312,23 +314,29 @@ public class ZombieSimulator {
 		ZombieMap map = GTMapGenerator.loadGTMap();
 		ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities(0.1);
 
+		log.info("NUM_TRIALS: " + NUM_TRIALS);
+		log.info("");
+
 		for (NUM_ZOMBIES = 40; NUM_ZOMBIES <= 70; NUM_ZOMBIES+=10) {
 			log.info("=== NUM_ZOMBIES: " + NUM_ZOMBIES + " ===");
 			log.info("");
 
 			Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
-			planners.put("Risk Averse Planner", new RiskAverseZombiePlanner());
-			planners.put("Simple Planner", new SimpleZombiePlanner());
+			ZombiePlanner riskaverse, simple;
+			planners.put("Risk Averse Planner", riskaverse = new RiskAverseZombiePlanner());
+			planners.put("Simple Planner", simple = new SimpleZombiePlanner());
 
 			Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
 			Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
+			Map<ZombiePlanner,Integer> zombiesStunned = Maps.newLinkedHashMap();
 
 			// freshmen dorms
-			IntCoord start = new IntCoord(377, 275);
+			IntCoord start = new IntCoord(20, 70);
 			// clough building
-			IntCoord goal = new IntCoord(274, 204);
+			IntCoord goal = new IntCoord(289, 205);
 			log.info("From: " + start);
 			log.info("To: " + goal);
+			log.info("(Woodruff -> Library)");
 			log.info("");
 
 			long startTime = System.nanoTime();
@@ -349,8 +357,12 @@ public class ZombieSimulator {
 						successes.put(planner, 0);
 					if (!totalSteps.containsKey(planner))
 						totalSteps.put(planner, 0);
+					if (!zombiesStunned.containsKey(planner))
+						zombiesStunned.put(planner, 0);
 					successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
 					totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
+					if (sim.getState() == GameState.SUCCESS)
+						zombiesStunned.put(planner, zombiesStunned.get(planner) + sim.zombiesStunned);
 				}
 			}
 			long endTime = System.nanoTime();
@@ -359,11 +371,17 @@ public class ZombieSimulator {
 
 			for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
 				log.info("Planner: " + e.getKey());
-				log.info("Average steps:" + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
-				log.info("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS)); System.out.println();
+				log.info("Average steps: " + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
+				log.info("Avg zombies stunned (success only): " + ((double)zombiesStunned.get(e.getValue())/NUM_TRIALS));
+				log.info("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS));
+				log.info("");
 			}
+
+			double raSucc = (double)successes.get(riskaverse)/NUM_TRIALS;
+			double simpleSucc = (double)successes.get(simple)/NUM_TRIALS;
+			log.info("RA/Simple success ratio: " + (raSucc/simpleSucc));
 			log.info("");
-			log.info("");
+
 		}
 	}
 }
