@@ -1,11 +1,12 @@
 package zombieplanner.planner;
 
+import java.util.Set;
+
 import robotutils.data.IntCoord;
 import zombieplanner.simulator.Action;
 import zombieplanner.simulator.ProbabilityMap;
+import zombieplanner.simulator.Zombie;
 import zombieplanner.simulator.ZombieMap;
-
-import com.google.common.collect.Multiset;
 
 public interface ZombiePlanner {
 
@@ -13,6 +14,6 @@ public interface ZombiePlanner {
 
 	public void setGoal(IntCoord goal);
 
-	public Action getAction(IntCoord from, Multiset<IntCoord> visibleZombies);
+	public Action getAction(IntCoord from, Set<Zombie> visibleZombies);
 
 }

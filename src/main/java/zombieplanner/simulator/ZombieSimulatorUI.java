@@ -144,16 +144,15 @@ public class ZombieSimulatorUI implements ActionListener {
 
 		if (cmd.equals("Initialize Zombies")) {
 			sim.initializeZombies();
-			int i=0;
-			for (IntCoord zombie : sim.zombies) {
-				mp.setShape("zombie" + i, human,
-						AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
+			for (Zombie zombie : sim.zombies) {
+				IntCoord zpos = zombie.getPosition();
+				mp.setShape("zombie" + zombie.getId(), human,
+						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
 						Color.ORANGE.darker());
-				mp.setShape("zombieView" + i, human,
-						AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
-						Color.ORANGE.darker());
-				i++;
-			}
+//				mp.setShape("zombieView" + zombie.getId(), human,
+//						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
+//						Color.ORANGE.darker());
+		}
 			initialize.setEnabled(false);
 
 			sim.planner.initialize(sim.map, sim.probDist);
@@ -171,7 +170,7 @@ public class ZombieSimulatorUI implements ActionListener {
 			step.setEnabled(false);
 			stop.setEnabled(true);
 
-			timer = new Timer(250, new ActionListener() {
+			timer = new Timer(150, new ActionListener() {
 				@Override public void actionPerformed(ActionEvent arg0) {
 					step();
 				}
@@ -196,20 +195,25 @@ public class ZombieSimulatorUI implements ActionListener {
 		AffineTransform xform = AffineTransform.getTranslateInstance(sim.human.get(0)+0.5, sim.human.get(1)+0.5);
 		mp.setShape("human", human, xform, Color.BLUE.darker());
 		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
-		int i=0;
-		for (IntCoord zombie : sim.zombies) {
-			mp.setShape("zombie" + i, human,
-					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
-					Color.ORANGE.darker());
-//			mp.setShape("zombieView" + i, human,
-//					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
-//					Color.ORANGE.darker());
-			i++;
+		for (Zombie zombie : sim.zombies) {
+			if (zombie.isAlive()) {
+				IntCoord zpos = zombie.getPosition();
+				mp.setShape("zombie" + zombie.getId(), human,
+						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
+						Color.ORANGE.darker());
+	//			mp.setShape("zombieView" + zombie.getId(), human,
+	//					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
+	//					Color.ORANGE.darker());
+			}
+			else {
+				mp.removeShape("zombie" + zombie.getId());
+			}
 		}
 
 		List<IntCoord> plan = ((ZombiePlannerImpl)sim.planner).getPlan();
-		plan.remove(0);
+
 		if (plan != null) {
+			plan = plan.subList(1, plan.size());
 			int j;
 			for (j=0; j<plan.size(); j++) {
 				xform = AffineTransform.getTranslateInstance(plan.get(j).get(0)+0.5, plan.get(j).get(1)+0.5);

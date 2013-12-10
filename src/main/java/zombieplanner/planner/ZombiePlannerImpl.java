@@ -1,17 +1,17 @@
 package zombieplanner.planner;
 
 import java.util.List;
+import java.util.Set;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
 import zombieplanner.simulator.Action;
 import zombieplanner.simulator.ProbabilityMap;
+import zombieplanner.simulator.Zombie;
 import zombieplanner.simulator.ZombieMap;
 import zombieplanner.simulator.ZombieSimulator;
 import zombieplanner.simulator.ZombieSimulator.MoveAction;
 import zombieplanner.simulator.ZombieSimulator.StunAction;
-
-import com.google.common.collect.Multiset;
 
 
 public class ZombiePlannerImpl implements ZombiePlanner {
@@ -36,7 +36,7 @@ public class ZombiePlannerImpl implements ZombiePlanner {
 	}
 
 	@Override
-	public Action getAction(IntCoord from, Multiset<IntCoord> visibleZombies) {
+	public Action getAction(IntCoord from, Set<Zombie> visibleZombies) {
 		if (planner == null) {
 			planner = new ProbabilisticGridDStar(map, probDist, 10000, from, goal);
 		}
@@ -44,10 +44,11 @@ public class ZombiePlannerImpl implements ZombiePlanner {
 		// if there are zombies in sight
 		if (!visibleZombies.isEmpty()) {
 			double min = Double.POSITIVE_INFINITY;
-			IntCoord target = null;
-			for (IntCoord zombie : visibleZombies) {
-				if (CoordUtils.mdist(from, zombie) < min) {
-					min = CoordUtils.mdist(from, zombie);
+			Zombie target = null;
+			for (Zombie zombie : visibleZombies) {
+				IntCoord zpos = zombie.getPosition();
+				if (CoordUtils.mdist(from, zpos) < min) {
+					min = CoordUtils.mdist(from, zpos);
 					target = zombie;
 				}
 			}
@@ -59,6 +60,8 @@ public class ZombiePlannerImpl implements ZombiePlanner {
 
 		planner.updateStart(from);
 		plan = planner.plan();
+		if (plan.isEmpty())
+			return null;
 		plan = plan.subList(1, plan.size());
 		if (plan.isEmpty())
 			return null;

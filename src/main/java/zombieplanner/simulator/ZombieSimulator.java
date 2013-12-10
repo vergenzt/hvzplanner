@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
@@ -19,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
+import com.google.common.collect.Sets;
 
 /**
  * Simulates a Zombie Survival situation according to our model.
@@ -31,7 +33,7 @@ public class ZombieSimulator {
 	protected ProbabilityMap probDist;
 	protected IntCoord human;
 	protected IntCoord goal;
-	protected Multiset<IntCoord> zombies;
+	protected Set<Zombie> zombies;
 	protected ZombiePlanner planner;
 
 	public ZombieSimulator(ZombieMap map, ProbabilityMap probDist, ZombiePlanner planner) {
@@ -91,9 +93,9 @@ public class ZombieSimulator {
 
 	public static class StunAction implements Action {
 
-		private final IntCoord target;
+		private final Zombie target;
 
-		public StunAction(IntCoord target) {
+		public StunAction(Zombie target) {
 			this.target = target;
 		}
 
@@ -102,7 +104,7 @@ public class ZombieSimulator {
 			assert sim.zombies.contains(target);
 
 			Random rand = new Random();
-			double dist = CoordUtils.mdist(sim.human, target);
+			double dist = CoordUtils.mdist(sim.human, target.getPosition());
 
 			if (dist > MAX_STUN_DISTANCE) return;
 
@@ -111,7 +113,7 @@ public class ZombieSimulator {
 				p += 0.1;
 
 			if (rand.nextDouble() < p)
-				sim.zombies.remove(target);
+				target.setAlive(false);
 		}
 	}
 
@@ -155,10 +157,10 @@ public class ZombieSimulator {
 			});
 	}
 
-	public static final int NUM_ZOMBIES = 50;
+	public static final int NUM_ZOMBIES = 80;
 
 	public void initializeZombies() {
-		zombies = HashMultiset.create();
+		zombies = Sets.newHashSet();
 		Random rand = new Random();
 		for (int n=0; n<NUM_ZOMBIES; n++) {
 			double x = rand.nextDouble();
@@ -176,7 +178,7 @@ public class ZombieSimulator {
 				if (pos != null)
 					break;
 			}
-			zombies.add(pos);
+			zombies.add(new Zombie(pos));
 		}
 	}
 
@@ -202,10 +204,10 @@ public class ZombieSimulator {
 			return;
 
 		// get the zombies within the player's view radius
-		Multiset<IntCoord> visibleZombies
-			= Multisets.filter(zombies, new Predicate<IntCoord>() {
-				@Override public boolean apply(IntCoord zombie) {
-					return isVisible(zombie);
+		Set<Zombie> visibleZombies
+			= Sets.filter(zombies, new Predicate<Zombie>() {
+				@Override public boolean apply(Zombie zombie) {
+					return isVisible(zombie.getPosition()) && zombie.isAlive();
 				}
 			});
 
@@ -238,37 +240,21 @@ public class ZombieSimulator {
 			}
 		}
 
-		for (IntCoord zombie : zombies)
-			if (zombie.equals(human)) {
+		for (Zombie zombie : zombies)
+			if (zombie.isAlive() && zombie.getPosition().equals(human)) {
 				state = GameState.FAILURE;
 				return;
 			}
 
-		// TODO add varied zombie speed
-		Multiset<IntCoord> movedZombies = HashMultiset.create();
-		for (IntCoord zombie : zombies) {
-			if (prevs.containsKey(zombie)) {
-				movedZombies.add(prevs.get(zombie));
-			}
-			else {
-				IntCoord[] moves = new IntCoord[] {
-					new IntCoord((int)zombie.get(0), (int)zombie.get(1)),
-					new IntCoord((int)zombie.get(0)+1, (int)zombie.get(1)),
-					new IntCoord((int)zombie.get(0)-1, (int)zombie.get(1)),
-					new IntCoord((int)zombie.get(0), (int)zombie.get(1)+1),
-					new IntCoord((int)zombie.get(0), (int)zombie.get(1)-1),
-				};
-				IntCoord moved = moves[new Random().nextInt(5)];
-				if (map.typeOf(moved.getInts()) == CellType.CLEAR)
-					movedZombies.add(moved);
-				else
-					movedZombies.add(zombie);
-			}
+		// process zombie movement
+		for (Zombie zombie : zombies) {
+			if (!zombie.isAlive())
+				continue;
+			zombie.doTurn(prevs, map);
 		}
-		zombies = movedZombies;
 
-		for (IntCoord zombie : zombies)
-			if (zombie.equals(human)) {
+		for (Zombie zombie : zombies)
+			if (zombie.isAlive() && zombie.getPosition().equals(human)) {
 				state = GameState.FAILURE;
 				return;
 			}
