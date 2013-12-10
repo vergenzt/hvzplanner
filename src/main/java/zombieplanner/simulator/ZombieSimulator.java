@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 
+import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
 import zombieplanner.planner.ZombiePlanner;
 import zombieplanner.simulator.ZombieMap.CellType;
@@ -86,6 +87,34 @@ public class ZombieSimulator {
 		}
 	}
 
+	public static final int MAX_STUN_DISTANCE = 4;
+
+	public static class StunAction implements Action {
+
+		private final IntCoord target;
+
+		public StunAction(IntCoord target) {
+			this.target = target;
+		}
+
+		@Override
+		public void execute(ZombieSimulator sim) {
+			assert sim.zombies.contains(target);
+
+			Random rand = new Random();
+			double dist = CoordUtils.mdist(sim.human, target);
+
+			if (dist > MAX_STUN_DISTANCE) return;
+
+			double p = 0.4; // base probability of succeeding
+			for (int i=0; i<(int)dist; i++)
+				p += 0.1;
+
+			if (rand.nextDouble() < p)
+				sim.zombies.remove(target);
+		}
+	}
+
 	/**
 	 * The Manhattan distance view radius for the human. (i.e. zombies
 	 * whose Manhattan distance is <= VIEW_RADIUS are visible)
@@ -126,38 +155,51 @@ public class ZombieSimulator {
 			});
 	}
 
-	public static final int NUM_ZOMBIES = 30;
+	public static final int NUM_ZOMBIES = 50;
 
 	public void initializeZombies() {
 		zombies = HashMultiset.create();
 		Random rand = new Random();
 		for (int n=0; n<NUM_ZOMBIES; n++) {
-			//
 			double x = rand.nextDouble();
 			double sum = 0.0;
-			IntCoord zombie = null;
+			IntCoord pos = null;
 			for (int i=0; i<map.size(0); i++) {
 				for (int j=0; j<map.size(1); j++) {
 					sum += probDist.get(i, j);
 					if (x <= sum) {
-						zombie = new IntCoord(i,j);
+						pos = new IntCoord(i,j);
 					}
-					if (zombie != null)
+					if (pos != null)
 						break;
 				}
-				if (zombie != null)
+				if (pos != null)
 					break;
 			}
-			zombies.add(zombie);
+			zombies.add(pos);
 		}
 	}
 
+	public enum GameState {
+		SETUP, ACTIVE, SUCCESS, FAILURE;
+	}
+
+	private GameState state = GameState.SETUP;
+
+	public void setState(GameState state) {
+		this.state = state;
+	}
+
+	public GameState getState() {
+		return state;
+	}
+
 	/**
-	 * Step the simulation once, and return whether the game is over.
-	 * @return
+	 * Step the simulation once.
 	 */
-	public boolean stepOnce() {
-		boolean gameOver = false;
+	public void stepOnce() {
+		if (state != GameState.ACTIVE)
+			return;
 
 		// get the zombies within the player's view radius
 		Multiset<IntCoord> visibleZombies
@@ -169,7 +211,8 @@ public class ZombieSimulator {
 
 		Action action = planner.getAction(human, visibleZombies);
 		if (action == null) {
-			return true;
+			state = GameState.FAILURE;
+			return;
 		}
 
 		action.execute(this);
@@ -195,6 +238,13 @@ public class ZombieSimulator {
 			}
 		}
 
+		for (IntCoord zombie : zombies)
+			if (zombie.equals(human)) {
+				state = GameState.FAILURE;
+				return;
+			}
+
+		// TODO add varied zombie speed
 		Multiset<IntCoord> movedZombies = HashMultiset.create();
 		for (IntCoord zombie : zombies) {
 			if (prevs.containsKey(zombie)) {
@@ -218,9 +268,21 @@ public class ZombieSimulator {
 		zombies = movedZombies;
 
 		for (IntCoord zombie : zombies)
-			if (zombie.equals(human))
-				gameOver = true;
+			if (zombie.equals(human)) {
+				state = GameState.FAILURE;
+				return;
+			}
 
-		return gameOver;
+		if (human.equals(goal)) {
+			state = GameState.SUCCESS;
+		}
 	}
+
+	/**
+	 * Run a simulation without the user interface.
+	 * @param args
+	 */
+//	public static void main(String[] args) {
+		// TODO implement non-UI main method
+//	}
 }

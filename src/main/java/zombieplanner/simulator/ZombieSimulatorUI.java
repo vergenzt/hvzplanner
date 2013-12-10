@@ -1,12 +1,10 @@
 package zombieplanner.simulator;
 
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Shape;
-import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -14,7 +12,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +19,9 @@ import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
@@ -30,6 +29,7 @@ import robotutils.gui.MapPanel;
 import zombieplanner.planner.ZombiePlanner;
 import zombieplanner.planner.ZombiePlannerImpl;
 import zombieplanner.simulator.ZombieMap.CellType;
+import zombieplanner.simulator.ZombieSimulator.GameState;
 import zombieplanner.simulator.impl.GTMapGenerator;
 
 public class ZombieSimulatorUI implements ActionListener {
@@ -38,6 +38,8 @@ public class ZombieSimulatorUI implements ActionListener {
 	private final MapPanel mp;
 
 	private final JButton initialize, step, run, stop;
+
+	// TODO human auto-center
 
 	public ZombieSimulatorUI(ZombieSimulator sim) throws IOException {
 		this.sim = sim;
@@ -133,6 +135,8 @@ public class ZombieSimulatorUI implements ActionListener {
     		initialize.setEnabled(true);
     }
 
+    private Timer timer;
+
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String cmd = e.getActionCommand();
@@ -154,27 +158,79 @@ public class ZombieSimulatorUI implements ActionListener {
 
 			sim.planner.initialize(sim.map, sim.probDist);
 			step.setEnabled(true);
+			run.setEnabled(true);
+			sim.setState(GameState.ACTIVE);
 //			run.setEnabled(true);
 //			stop.setEnabled(true);
 		}
 		else if (cmd.equals("Step")) {
-			boolean gameOver = sim.stepOnce();
-			int i=0;
-			for (IntCoord zombie : sim.zombies) {
-				mp.setShape("zombie" + i, human,
-						AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
-						Color.ORANGE.darker());
-				mp.setShape("zombieView" + i, human,
-						AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
-						Color.ORANGE.darker());
-				i++;
-			}
+			step();
+		}
+		else if (cmd.equals("Run")) {
+			run.setEnabled(false);
+			step.setEnabled(false);
+			stop.setEnabled(true);
 
-			if (gameOver) {
-				step.setEnabled(false);
-			}
+			timer = new Timer(250, new ActionListener() {
+				@Override public void actionPerformed(ActionEvent arg0) {
+					step();
+				}
+			});
+			timer.start();
+		}
+		else if (cmd.equals("Stop")) {
+			timer.stop();
+			timer = null;
+
+			stop.setEnabled(false);
+			run.setEnabled(true);
+			step.setEnabled(true);
 		}
 		mp.repaint();
+	}
+
+	private int planSize = 0;
+
+	public void step() {
+		sim.stepOnce();
+		AffineTransform xform = AffineTransform.getTranslateInstance(sim.human.get(0)+0.5, sim.human.get(1)+0.5);
+		mp.setShape("human", human, xform, Color.BLUE.darker());
+		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
+		int i=0;
+		for (IntCoord zombie : sim.zombies) {
+			mp.setShape("zombie" + i, human,
+					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
+					Color.ORANGE.darker());
+//			mp.setShape("zombieView" + i, human,
+//					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
+//					Color.ORANGE.darker());
+			i++;
+		}
+
+		List<IntCoord> plan = ((ZombiePlannerImpl)sim.planner).getPlan();
+		plan.remove(0);
+		if (plan != null) {
+			int j;
+			for (j=0; j<plan.size(); j++) {
+				xform = AffineTransform.getTranslateInstance(plan.get(j).get(0)+0.5, plan.get(j).get(1)+0.5);
+				mp.setShape("plan" + j, human, xform, new Color(0,150,150,150));
+			}
+			for (; j<planSize; j++) {
+				mp.removeShape("plan" + j);
+			}
+			planSize = plan.size();
+		}
+
+		if (sim.getState() == GameState.FAILURE || sim.getState() == GameState.SUCCESS) {
+			step.setEnabled(false);
+			if (timer != null) {
+				timer.stop();
+				timer = null;
+			}
+			run.setEnabled(false);
+			stop.setEnabled(false);
+			JOptionPane.showMessageDialog(null, "Game over: " + sim.getState());
+		}
 	}
 
 	public static void main(String[] args) throws IOException {

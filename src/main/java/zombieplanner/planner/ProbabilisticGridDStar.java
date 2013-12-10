@@ -49,7 +49,7 @@ public class ProbabilisticGridDStar extends GridDStar {
 		if (ca == CellType.OBSTACLE || cb == CellType.OBSTACLE)
 			return Double.POSITIVE_INFINITY;
 		else
-			return CONSTANT - alpha*Math.log(probDist.get(b.getInts()));
+			return CONSTANT - alpha*Math.log(1.0 - probDist.get(b.getInts()));
 	}
 
 }

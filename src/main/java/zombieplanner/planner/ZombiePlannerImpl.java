@@ -2,11 +2,14 @@ package zombieplanner.planner;
 
 import java.util.List;
 
+import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
 import zombieplanner.simulator.Action;
 import zombieplanner.simulator.ProbabilityMap;
 import zombieplanner.simulator.ZombieMap;
+import zombieplanner.simulator.ZombieSimulator;
 import zombieplanner.simulator.ZombieSimulator.MoveAction;
+import zombieplanner.simulator.ZombieSimulator.StunAction;
 
 import com.google.common.collect.Multiset;
 
@@ -27,27 +30,44 @@ public class ZombiePlannerImpl implements ZombiePlanner {
 		this.probDist = probMap;
 	}
 
+	private List<IntCoord> plan;
+	public List<IntCoord> getPlan() {
+		return plan;
+	}
+
 	@Override
 	public Action getAction(IntCoord from, Multiset<IntCoord> visibleZombies) {
 		if (planner == null) {
-			planner = new ProbabilisticGridDStar(map, probDist, from, goal);
+			planner = new ProbabilisticGridDStar(map, probDist, 10000, from, goal);
 		}
 
-		// if there are no zombies in sight
-//		if (visibleZombies.isEmpty()) {
-//			planner.setStart(from);
-			List<IntCoord> plan = planner.plan();
-			if (plan.isEmpty())
-				return null;
-			IntCoord next = plan.get(1);
-			if (next.get(0) < from.get(0)) return MoveAction.LEFT;
-			if (next.get(0) > from.get(0)) return MoveAction.RIGHT;
-			if (next.get(1) < from.get(1)) return MoveAction.UP;
-			if (next.get(1) > from.get(1)) return MoveAction.DOWN;
-//		}
-//		else {
-//		}
-		return null;
+		// if there are zombies in sight
+		if (!visibleZombies.isEmpty()) {
+			double min = Double.POSITIVE_INFINITY;
+			IntCoord target = null;
+			for (IntCoord zombie : visibleZombies) {
+				if (CoordUtils.mdist(from, zombie) < min) {
+					min = CoordUtils.mdist(from, zombie);
+					target = zombie;
+				}
+			}
+
+			if (min <= ZombieSimulator.MAX_STUN_DISTANCE && target != null) {
+				return new StunAction(target);
+			}
+		}
+
+		planner.updateStart(from);
+		plan = planner.plan();
+		plan = plan.subList(1, plan.size());
+		if (plan.isEmpty())
+			return null;
+		IntCoord next = plan.get(0);
+		if (next.get(0) < from.get(0)) return MoveAction.LEFT;
+		if (next.get(0) > from.get(0)) return MoveAction.RIGHT;
+		if (next.get(1) < from.get(1)) return MoveAction.UP;
+		if (next.get(1) > from.get(1)) return MoveAction.DOWN;
+		return MoveAction.NONE;
 	}
 
 	@Override

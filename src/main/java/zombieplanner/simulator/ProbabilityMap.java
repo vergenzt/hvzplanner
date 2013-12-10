@@ -4,6 +4,7 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.Color;
 import java.util.Arrays;
+import java.lang.Math;
 
 import robotutils.data.GridMap;
 import robotutils.data.GridMapUtils;
@@ -165,22 +166,29 @@ public class ProbabilityMap {
     	double max_alpha_percent = 1.0;
 
     	double max = 0;
+    	double sum = 0;
+    	double ave = 0;
     	for (int xInd = 0; xInd < img_width; xInd++) {
     		for (int yInd = 0; yInd < img_height; yInd++) {
     			if (this.get(xInd, yInd) > max) {
     				max = this.get(xInd, yInd);
     			}
+    			sum += this.get(xInd, yInd);
     		}
     	}
-    	System.out.println(max);
+    	ave = sum/(img_width*img_height);
 
-    	double scale_factor = (255*max_alpha_percent)/max;
+    	System.out.println("Maximum probability: " + max);
+
+    	double range = Math.min(4*ave, max);
+
+    	double scale_factor = (255*max_alpha_percent)/range;
     	int alpha = 0;
     	int rgba = 0;
 
     	for (int xInd = 0; xInd < img_width; xInd++) {
     		for (int yInd = 0; yInd < img_height; yInd++) {
-    			alpha = (int) (scale_factor*(this.get(xInd, yInd)));
+    			alpha = (int) Math.min((scale_factor*(this.get(xInd, yInd))), 255*max_alpha_percent);
     			rgba = new Color(255, 0, 0, alpha).getRGB();
     			img.setRGB(xInd, yInd, rgba);
     		}
