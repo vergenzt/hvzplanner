@@ -29,6 +29,8 @@ public class RiskAverseZombiePlanner implements ZombiePlanner {
 	public void initialize(ZombieMap map, ProbabilityMap probMap) {
 		this.map = map;
 		this.probDist = probMap;
+		this.plan = null;
+		this.planner = null;
 	}
 
 	private List<IntCoord> plan;

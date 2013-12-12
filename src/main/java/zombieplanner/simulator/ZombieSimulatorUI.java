@@ -8,6 +8,8 @@ import java.awt.Shape;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
@@ -16,7 +18,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -27,9 +28,7 @@ import javax.swing.Timer;
 import robotutils.data.GridMapUtils;
 import robotutils.data.IntCoord;
 import robotutils.gui.MapPanel;
-import zombieplanner.ResourceLoader;
 import zombieplanner.planner.RiskAverseZombiePlanner;
-import zombieplanner.planner.SimpleZombiePlanner;
 import zombieplanner.planner.ZombiePlanner;
 import zombieplanner.simulator.ZombieMap.CellType;
 import zombieplanner.simulator.ZombieSimulator.GameState;
@@ -37,10 +36,15 @@ import zombieplanner.simulator.impl.GTMapGenerator;
 
 public class ZombieSimulatorUI implements ActionListener {
 
+	private final JFrame jf;
 	private final ZombieSimulator sim;
 	private final MapPanel mp;
 
 	private final JButton initialize, step, run, stop;
+
+	public JFrame getJFrame() {
+		return jf;
+	}
 
 	// TODO human auto-center
 
@@ -72,7 +76,7 @@ public class ZombieSimulatorUI implements ActionListener {
         mp.setIcon("probDist", probDistImage, mapBounds);
         mp.setPreferredSize(new Dimension(2*map.size(0), 2*map.size(1)));
 
-        JFrame jf = new JFrame("Humans vs Zombies Path Planner");
+        jf = new JFrame("Humans vs Zombies Path Planner");
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.getContentPane().setLayout(new BorderLayout());
         jf.getContentPane().add(mp, BorderLayout.CENTER);
@@ -122,7 +126,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		if (sim.getMap().typeOf(x, y) == CellType.OBSTACLE)
     			return;
     		sim.setHumanPosition(new IntCoord(x, y));
-    		System.out.println("Human: " + sim.human);
+//    		System.out.println("Human: " + sim.human);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
 			mp.setShape("human", human, xform, Color.BLUE.darker());
     		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
@@ -132,7 +136,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		if (sim.getMap().typeOf(x, y) == CellType.OBSTACLE)
     			return;
     		sim.setGoalPosition(new IntCoord(x, y));
-    		System.out.println("Goal: " + sim.goal);
+//    		System.out.println("Goal: " + sim.goal);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
 			mp.setShape("goal", human, xform, Color.GREEN.darker());
     		mp.setShape("goalView", goalView, xform, new Color(0,150,0,80));
@@ -240,6 +244,10 @@ public class ZombieSimulatorUI implements ActionListener {
 			stop.setEnabled(false);
 			JOptionPane.showMessageDialog(null, "Game over: " + sim.getState());
 		}
+	}
+
+	public void closeFrame() {
+		jf.dispatchEvent(new WindowEvent(jf, WindowEvent.WINDOW_CLOSING));
 	}
 
 	public static void main(String[] args) throws IOException {

@@ -1,22 +1,31 @@
 package zombieplanner.simulator;
 
+import java.awt.EventQueue;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
-import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 import robotutils.data.CoordUtils;
 import robotutils.data.IntCoord;
@@ -284,13 +293,25 @@ public class ZombieSimulator {
 		}
 	}
 
+	/**
+	 * The total number of trials to run.
+	 */
 	public static final int NUM_TRIALS = 1000;
+
+	/**
+	 * The total number of distinct start/end pairs to test. Each pair
+	 * will be tested (NUM_TRIALS/NUM_CONFIGS) times.
+	 */
+	public static final int NUM_CONFIGS = 20;
+	public static final int TRIALS_PER_CONFIG = 50;
 
 	/**
 	 * Run a simulation without the user interface.
 	 * @param args
+	 * @throws InvocationTargetException
+	 * @throws InterruptedException
 	 */
-	public static void main(String[] args) throws SecurityException, IOException {
+	public static void main(String[] args) throws SecurityException, IOException, InterruptedException, InvocationTargetException {
 
 		String fname = new SimpleDateFormat("'log/'yyyy-MM-dd HH.mm.ss.SSS'.txt'").format(new Date());
 		FileHandler fh = new FileHandler(fname);
@@ -311,110 +332,174 @@ public class ZombieSimulator {
 		});
 		log.addHandler(h);
 
+		log.info(SimpleDateFormat.getDateTimeInstance().format(new Date()));
+		log.info("");
+
 		ZombieMap map = GTMapGenerator.loadGTMap();
 		ProbabilityMap probDist = GTMapGenerator.loadGTZombieProbabilities(0.1);
 
-		log.info("NUM_TRIALS: " + NUM_TRIALS);
+		log.info("Getting " + NUM_CONFIGS + " random start/end positions");
+
+		// build a user-checked list of valid start/end pairs
+		final List<IntCoord[]> locationsToTest = Lists.newArrayList();
+		while (locationsToTest.size() < NUM_CONFIGS) {
+			// random start configuration
+			final IntCoord start = getRandomLocation(map);
+			final IntCoord goal = getRandomLocation(map);
+
+			final ZombiePlanner planner = new RiskAverseZombiePlanner();
+			final ZombieSimulator sim = new ZombieSimulator(map, probDist, planner);
+			final AtomicBoolean done = new AtomicBoolean();
+			final AtomicBoolean cancel = new AtomicBoolean();
+
+			final ZombieSimulatorUI ui = new ZombieSimulatorUI(sim) {
+				@Override
+				public void step() {
+					super.step();
+					if (sim.getState() != GameState.ACTIVE) {
+						done.set(true);
+					}
+				}
+			};
+
+			ui.getJFrame().setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			ui.getJFrame().addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					done.set(true);
+				}
+			});
+
+			// initialize the positions and the zombies
+			EventQueue.invokeAndWait(new Runnable() {
+				@Override
+				public void run() {
+					ui.mapClicked((int)start.get(0), (int)start.get(1), MouseEvent.BUTTON1, 1);
+					ui.mapClicked((int)goal.get(0), (int)goal.get(1), MouseEvent.BUTTON3, 1);
+					ui.actionPerformed(new ActionEvent(sim, 0, "Initialize Zombies"));
+				}
+			});
+
+			// wait until the user finishes the simulation
+			while (!done.get());
+
+			// ask if they want to keep it
+			EventQueue.invokeAndWait(new Runnable() {
+				@Override
+				public void run() {
+					int result = JOptionPane.showConfirmDialog(null,
+							"Use this configuration in simulations?",
+							"Keep Configuration",
+							JOptionPane.YES_NO_CANCEL_OPTION);
+					switch (result) {
+					case JOptionPane.YES_OPTION:
+						log.info("Adding config " + locationsToTest.size() + ": " + start + "/" + goal);
+						locationsToTest.add(new IntCoord[] {start, goal});
+						break;
+					case JOptionPane.CANCEL_OPTION:
+						cancel.set(true);
+						break;
+					}
+				}
+			});
+
+			if (cancel.get()) {
+				log.info("Cancelling experiment");
+				return;
+			}
+
+			ui.closeFrame();
+
+		}
 		log.info("");
 
-		int rand_x = -1;
-		int rand_y = -1;
+		// locationsToTest is now initialized with valid start/end configurations
+
+//		log.info("NUM_TRIALS: " + NUM_TRIALS);
+		log.info("Running " + TRIALS_PER_CONFIG + " trials per configuration");
+		log.info("");
+
 		for (NUM_ZOMBIES = 40; NUM_ZOMBIES <= 70; NUM_ZOMBIES+=10) {
 			log.info("=== NUM_ZOMBIES: " + NUM_ZOMBIES + " ===");
 			log.info("");
 
-			Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
-			ZombiePlanner riskaverse, simple;
-			planners.put("Risk Averse Planner", riskaverse = new RiskAverseZombiePlanner());
-			planners.put("Simple Planner", simple = new SimpleZombiePlanner());
+			for (int configNum=0; configNum < NUM_CONFIGS; configNum++) {
 
-			Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
-			Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
-			Map<ZombiePlanner,Integer> zombiesStunned = Maps.newLinkedHashMap();
+				final IntCoord start = locationsToTest.get(configNum)[0];
+				final IntCoord goal = locationsToTest.get(configNum)[1];
+				log.info("== Start: " + start + " / Goal: " + goal + " ==");
 
-			// woodruff (freshmen dorms)
-//			IntCoord start = new IntCoord(20, 70);
-			// clark howell hall (dorms)
-//			IntCoord start = new IntCoord(378, 243);
-			// random start
-//			IntCoord start = new IntCoord(203, 230);
+				Map<String,ZombiePlanner> planners = Maps.newLinkedHashMap();
+				ZombiePlanner riskaverse, simple;
+				planners.put("Risk Averse Planner", riskaverse = new RiskAverseZombiePlanner());
+				planners.put("Simple Planner", simple = new SimpleZombiePlanner());
 
-			// clough building
-//			IntCoord goal = new IntCoord(289, 205);
-			// random goal
-//			IntCoord goal = new IntCoord(134, 57);
+				Map<ZombiePlanner,Integer> successes = Maps.newLinkedHashMap();
+				Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
+				Map<ZombiePlanner,Integer> zombiesStunned = Maps.newLinkedHashMap();
 
-//			log.info("From: " + start);
-//			log.info("To: " + goal);
-			log.info("(Random Start -> Random Goal)");
-			log.info("");
+				long startTime = System.nanoTime();
+				for (int i=0; i<TRIALS_PER_CONFIG; i++) {
 
-			long startTime = System.nanoTime();
-			for (int i=0; i<NUM_TRIALS; i++) {
-				// random start configuration
-				do {
-					rand_x = (int)(Math.random() * (map.size(0) + 1));
-					rand_y = (int)(Math.random() * (map.size(1) + 1));
-				} while (map.typeOf(rand_x, rand_y) == CellType.OBSTACLE);
-				IntCoord start = new IntCoord(rand_x, rand_y);
+					for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
+						ZombiePlanner planner = e.getValue();
 
-				// random goal configuration
-				do {
-					rand_x = (int)(Math.random() * (map.size(0) + 1));
-					rand_y = (int)(Math.random() * (map.size(1) + 1));
-				} while (map.typeOf(rand_x, rand_y) == CellType.OBSTACLE);
-				IntCoord goal = new IntCoord(rand_x, rand_y);
+						ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
 
-				if (i % 5 == 0) {
-					log.info("From: " + start + ", To: " + goal);
+						sim.setHumanPosition(start);
+						sim.setGoalPosition(goal);
+						sim.initializeZombies();
+
+						while (sim.getState() == GameState.ACTIVE) {
+							sim.stepOnce();
+						}
+
+						if (!successes.containsKey(planner))
+							successes.put(planner, 0);
+						if (!totalSteps.containsKey(planner))
+							totalSteps.put(planner, 0);
+						if (!zombiesStunned.containsKey(planner))
+							zombiesStunned.put(planner, 0);
+						successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
+						totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
+						if (sim.getState() == GameState.SUCCESS)
+							zombiesStunned.put(planner, zombiesStunned.get(planner) + sim.zombiesStunned);
+					}
 				}
+				long endTime = System.nanoTime();
+				log.info("Total time: " + (endTime - startTime)/1000000000 + "s");
+				log.info("");
 
 				for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
-					ZombiePlanner planner = e.getValue();
-
-					ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
-
-					sim.setHumanPosition(start);
-					sim.setGoalPosition(goal);
-
-					sim.initializeZombies();
-
-					while (sim.getState() == GameState.ACTIVE) {
-						sim.stepOnce();
-					}
-
-					if (!successes.containsKey(planner))
-						successes.put(planner, 0);
-					if (!totalSteps.containsKey(planner))
-						totalSteps.put(planner, 0);
-					if (!zombiesStunned.containsKey(planner))
-						zombiesStunned.put(planner, 0);
-					successes.put(planner, successes.get(planner) + (sim.getState() == GameState.SUCCESS ? 1 : 0));
-					totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
-					if (sim.getState() == GameState.SUCCESS)
-						zombiesStunned.put(planner, zombiesStunned.get(planner) + sim.zombiesStunned);
-					if (i%5 == 0) {
-						log.info(e.getKey() + " - Success: " + sim.getState() + ", Total Steps: " + totalSteps.get(planner));
-					}
+					log.info("Planner: " + e.getKey());
+					log.info("Average steps: " + ((double)totalSteps.get(e.getValue())/TRIALS_PER_CONFIG));
+//					log.info("Avg zombies stunned (success only): " + ((double)zombiesStunned.get(e.getValue())/TRIALS_PER_CONFIG));
+					log.info("% success: " + ((double)successes.get(e.getValue())/TRIALS_PER_CONFIG));
+					log.info("");
 				}
-			}
-			long endTime = System.nanoTime();
-			log.info("Total time: " + (endTime - startTime)/1000000000 + "s");
-			log.info("");
 
-			for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
-				log.info("Planner: " + e.getKey());
-				log.info("Average steps: " + ((double)totalSteps.get(e.getValue())/NUM_TRIALS));
-				log.info("Avg zombies stunned (success only): " + ((double)zombiesStunned.get(e.getValue())/NUM_TRIALS));
-				log.info("% success: " + ((double)successes.get(e.getValue())/NUM_TRIALS));
+				double raSucc = (double)successes.get(riskaverse)/NUM_TRIALS;
+				double simpleSucc = (double)successes.get(simple)/NUM_TRIALS;
+				log.info("RA/Simple success ratio: " + (raSucc/simpleSucc));
 				log.info("");
+
 			}
-
-			double raSucc = (double)successes.get(riskaverse)/NUM_TRIALS;
-			double simpleSucc = (double)successes.get(simple)/NUM_TRIALS;
-			log.info("RA/Simple success ratio: " + (raSucc/simpleSucc));
-			log.info("");
-
 		}
+	}
+
+	/**
+	 * Get a random non-obstacle location on the map.
+	 * @param map the map to check
+	 * @return a valid location
+	 */
+	protected static IntCoord getRandomLocation(ZombieMap map) {
+		int rand_x;
+		int rand_y;
+		do {
+			rand_x = (int)(Math.random() * (map.size(0) + 1));
+			rand_y = (int)(Math.random() * (map.size(1) + 1));
+		} while (map.typeOf(rand_x, rand_y) == CellType.OBSTACLE);
+		IntCoord start = new IntCoord(rand_x, rand_y);
+		return start;
 	}
 }

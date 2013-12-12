@@ -178,7 +178,7 @@ public class ProbabilityMap {
     	}
     	ave = sum/(img_width*img_height);
 
-    	System.out.println("Maximum probability: " + max);
+//    	System.out.println("Maximum probability: " + max);
 
     	double range = Math.min(4*ave, max);
 
