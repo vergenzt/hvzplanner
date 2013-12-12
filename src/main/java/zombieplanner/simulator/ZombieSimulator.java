@@ -292,7 +292,7 @@ public class ZombieSimulator {
 	 */
 	public static void main(String[] args) throws SecurityException, IOException {
 
-		String fname = new SimpleDateFormat("'log/'yyyy-MM-dd HH:mm:ss.SSS'.txt'").format(new Date());
+		String fname = new SimpleDateFormat("'log/'yyyy-MM-dd HH.mm.ss.SSS'.txt'").format(new Date());
 		FileHandler fh = new FileHandler(fname);
 		fh.setFormatter(new Formatter() {
 			@Override
@@ -317,6 +317,8 @@ public class ZombieSimulator {
 		log.info("NUM_TRIALS: " + NUM_TRIALS);
 		log.info("");
 
+		int rand_x = -1;
+		int rand_y = -1;
 		for (NUM_ZOMBIES = 40; NUM_ZOMBIES <= 70; NUM_ZOMBIES+=10) {
 			log.info("=== NUM_ZOMBIES: " + NUM_ZOMBIES + " ===");
 			log.info("");
@@ -330,23 +332,51 @@ public class ZombieSimulator {
 			Map<ZombiePlanner,Integer> totalSteps = Maps.newLinkedHashMap();
 			Map<ZombiePlanner,Integer> zombiesStunned = Maps.newLinkedHashMap();
 
-			// freshmen dorms
-			IntCoord start = new IntCoord(20, 70);
+			// woodruff (freshmen dorms)
+//			IntCoord start = new IntCoord(20, 70);
+			// clark howell hall (dorms)
+//			IntCoord start = new IntCoord(378, 243);
+			// random start
+//			IntCoord start = new IntCoord(203, 230);
+
 			// clough building
-			IntCoord goal = new IntCoord(289, 205);
-			log.info("From: " + start);
-			log.info("To: " + goal);
-			log.info("(Woodruff -> Library)");
+//			IntCoord goal = new IntCoord(289, 205);
+			// random goal
+//			IntCoord goal = new IntCoord(134, 57);
+
+//			log.info("From: " + start);
+//			log.info("To: " + goal);
+			log.info("(Random Start -> Random Goal)");
 			log.info("");
 
 			long startTime = System.nanoTime();
 			for (int i=0; i<NUM_TRIALS; i++) {
+				// random start configuration
+				do {
+					rand_x = (int)(Math.random() * (map.size(0) + 1));
+					rand_y = (int)(Math.random() * (map.size(1) + 1));
+				} while (map.typeOf(rand_x, rand_y) == CellType.OBSTACLE);
+				IntCoord start = new IntCoord(rand_x, rand_y);
+
+				// random goal configuration
+				do {
+					rand_x = (int)(Math.random() * (map.size(0) + 1));
+					rand_y = (int)(Math.random() * (map.size(1) + 1));
+				} while (map.typeOf(rand_x, rand_y) == CellType.OBSTACLE);
+				IntCoord goal = new IntCoord(rand_x, rand_y);
+
+				if (i % 5 == 0) {
+					log.info("From: " + start + ", To: " + goal);
+				}
+
 				for (Entry<String,ZombiePlanner> e : planners.entrySet()) {
 					ZombiePlanner planner = e.getValue();
 
 					ZombieSimulator sim = new ZombieSimulator(map, probDist, e.getValue());
+
 					sim.setHumanPosition(start);
 					sim.setGoalPosition(goal);
+
 					sim.initializeZombies();
 
 					while (sim.getState() == GameState.ACTIVE) {
@@ -363,6 +393,9 @@ public class ZombieSimulator {
 					totalSteps.put(planner, totalSteps.get(planner) + sim.totalSteps);
 					if (sim.getState() == GameState.SUCCESS)
 						zombiesStunned.put(planner, zombiesStunned.get(planner) + sim.zombiesStunned);
+					if (i%5 == 0) {
+						log.info(e.getKey() + " - Success: " + sim.getState() + ", Total Steps: " + totalSteps.get(planner));
+					}
 				}
 			}
 			long endTime = System.nanoTime();
