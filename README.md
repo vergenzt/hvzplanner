@@ -1,5 +1,30 @@
 # Humans vs Zombies Path Planner
 
-Note: Dependency stuff is not yet cleaned up. The only dependency not in the lib folder is a version of [vergenzt/robotutils](https://github.com/vergenzt/robotutils/tree/73166318f62f4e18276824ccc1dec80774adca08) with a few random fixes. I hope to reverse those changes soon after I determine how to fix this source code first.
+A path planner that takes risk into account in planning routes through the
+Georgia Tech campus for Humans vs Zombies. This is still very much a
+work-in-progress.
 
-To set up in Eclipse, once this repo is checked out, check out vergenzt/robotutils at the above-linked commit, and add it as a project dependency, in addition to the `jar`s in `lib/`.
+This was a project for the class [Robot Intelligence:
+Planning](http://www.cc.gatech.edu/~mstilman/class/RIP13/), offered at
+Georgia Tech in Fall 2013.
+
+## Eclipse Setup
+
+Clone the repository and add it to your workspace. Install the [Maven Eclipse
+plugin](http://maven.apache.org/eclipse-plugin.html), and right-click the
+project and go to `Configure`/`Convert to Maven project`. The dependencies
+should work automatically then.
+
+## Running
+
+Currently there are two classes with `main` methods:
+`zombieplanner.simulator.ZombieSimulator` and
+`zombieplanner.simulator.ZombieSimulatorUI`. The former runs an experiment we
+developed for the project that generates random start and end locations to test.
+The latter runs the UI for the user, which is what you'll generally want to do
+to demo the application.
+
+Please submit issues or pull requests if you have anything to improve! There is
+a lot of work that needs to be done on organizing the code (as most of it was
+written the night before the project was due). Thanks.
+
