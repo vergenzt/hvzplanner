@@ -1,10 +1,12 @@
 package zombieplanner.simulator;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Shape;
+import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -110,8 +112,8 @@ public class ZombieSimulatorUI implements ActionListener {
         mp.setView(mapBounds);
 	}
 
-    public static Shape human = new RoundRectangle2D.Double(-0.5, -0.5, 1.0, 1.0, 0.5, 0.5);
-//    public static Stroke humanStroke = new BasicStroke(3.5f);
+    public static Shape human = new RoundRectangle2D.Double(-0.25, -0.25, 0.5, 0.5, 0.25, 0.25);
+    public static Stroke humanStroke = new BasicStroke(0.5f);
     public static int r = ZombieSimulator.VIEW_RADIUS;
     public static Shape humanView = new Ellipse2D.Double(-r, -r, 2*r, 2*r);
     public static Shape goalView = new Ellipse2D.Double(-r/2, -r/2, r, r);
@@ -127,7 +129,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		sim.setHumanPosition(new IntCoord(x, y));
 //    		System.out.println("Human: " + sim.human);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
-			mp.setShape("human", human, xform, Color.BLUE.darker());
+			mp.setShape("human", human, xform, Color.BLUE.darker(), humanStroke);
     		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
     		mp.repaint();
     	}
@@ -137,7 +139,7 @@ public class ZombieSimulatorUI implements ActionListener {
     		sim.setGoalPosition(new IntCoord(x, y));
 //    		System.out.println("Goal: " + sim.goal);
     		AffineTransform xform = AffineTransform.getTranslateInstance(x+0.5, y+0.5);
-			mp.setShape("goal", human, xform, Color.GREEN.darker());
+			mp.setShape("goal", human, xform, Color.GREEN.darker(), humanStroke);
     		mp.setShape("goalView", goalView, xform, new Color(0,150,0,80));
     		mp.repaint();
     	}
@@ -158,7 +160,7 @@ public class ZombieSimulatorUI implements ActionListener {
 				IntCoord zpos = zombie.getPosition();
 				mp.setShape("zombie" + zombie.getId(), human,
 						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
-						Color.ORANGE.darker());
+						Color.ORANGE.darker(), humanStroke);
 //				mp.setShape("zombieView" + zombie.getId(), human,
 //						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
 //						Color.ORANGE.darker());
@@ -201,14 +203,14 @@ public class ZombieSimulatorUI implements ActionListener {
 	public void step() {
 		sim.stepOnce();
 		AffineTransform xform = AffineTransform.getTranslateInstance(sim.human.get(0)+0.5, sim.human.get(1)+0.5);
-		mp.setShape("human", human, xform, Color.BLUE.darker());
+		mp.setShape("human", human, xform, Color.BLUE.darker(), humanStroke);
 		mp.setShape("humanView", humanView, xform, new Color(0,0,150,50));
 		for (Zombie zombie : sim.zombies) {
 			if (zombie.isAlive()) {
 				IntCoord zpos = zombie.getPosition();
 				mp.setShape("zombie" + zombie.getId(), human,
 						AffineTransform.getTranslateInstance(zpos.get(0)+0.5, zpos.get(1)+0.5),
-						Color.ORANGE.darker());
+						Color.ORANGE.darker(), humanStroke);
 	//			mp.setShape("zombieView" + zombie.getId(), human,
 	//					AffineTransform.getTranslateInstance(zombie.get(0)+0.5, zombie.get(1)+0.5),
 	//					Color.ORANGE.darker());
@@ -225,7 +227,7 @@ public class ZombieSimulatorUI implements ActionListener {
 			int j;
 			for (j=0; j<plan.size(); j++) {
 				xform = AffineTransform.getTranslateInstance(plan.get(j).get(0)+0.5, plan.get(j).get(1)+0.5);
-				mp.setShape("plan" + j, human, xform, new Color(0,150,150,150));
+				mp.setShape("plan" + j, human, xform, new Color(0,150,150,150), humanStroke);
 			}
 			for (; j<planSize; j++) {
 				mp.removeShape("plan" + j);
