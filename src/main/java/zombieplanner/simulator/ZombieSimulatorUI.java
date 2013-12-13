@@ -24,7 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-import robotutils.data.GridMapUtils;
+import robotutils.data.GridMapUtils2;
 import robotutils.data.IntCoord;
 import robotutils.gui.MapPanel;
 import zombieplanner.planner.RiskAverseZombiePlanner;
@@ -68,7 +68,7 @@ public class ZombieSimulatorUI implements ActionListener {
             }
         };
 
-        Image mapImage = GridMapUtils.toImage(map);
+        Image mapImage = GridMapUtils2.toImage(map);
         mp.setIcon("map", mapImage, mapBounds);
 //        mp.setIcon("map", ImageIO.read(ResourceLoader.getInputStream("gatech_map-original.png")), mapBounds);
         Image probDistImage = sim.getProbDist().getHeatMap();
