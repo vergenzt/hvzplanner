@@ -6,7 +6,8 @@ work-in-progress.
 
 This was a project for the class [Robot Intelligence:
 Planning](http://www.cc.gatech.edu/~mstilman/class/RIP13/), offered at
-Georgia Tech in Fall 2013.
+Georgia Tech in Fall 2013. (See the final paper at
+[docs/paper.pdf](docs/paper.pdf).)
 
 ## Eclipse Setup
 
